@@ -530,16 +530,23 @@ recurrence.widget.Widget.prototype = {
 
     add_rule_panel: function(mode, rule) {
         var panel = new recurrence.widget.Panel(this);
-        var form = new recurrence.widget.RuleForm(panel, mode, rule);
+        var form = new recurrence.widget.RuleForm(panel, mode, rule, this.options);
 
+        var that = this;
         panel.onexpand = function() {
             if (panel.widget.selected_panel)
                 if (panel.widget.selected_panel != this)
                     panel.widget.selected_panel.collapse();
             panel.widget.selected_panel = this;
+            if (that.options.max_rules && that.panels.length >= that.options.max_rules) {
+                that.elements.control.style.display = 'none';
+            }
         };
         panel.onremove = function() {
             form.remove();
+            if (that.options.max_rules && that.panels.length >= that.options.max_rules) {
+                that.elements.control.style.display = '';
+            }
         };
 
         this.elements.panels.appendChild(panel.elements.root);
@@ -550,7 +557,7 @@ recurrence.widget.Widget.prototype = {
 
     add_date_panel: function(mode, date) {
         var panel = new recurrence.widget.Panel(this);
-        var form = new recurrence.widget.DateForm(panel, mode, date);
+        var form = new recurrence.widget.DateForm(panel, mode, date, this.options);
 
         panel.onexpand = function() {
             if (panel.widget.selected_panel)
@@ -725,7 +732,8 @@ recurrence.widget.RuleForm.prototype = {
             new recurrence.Rule(recurrence.YEARLY, rule_options),
             new recurrence.Rule(recurrence.MONTHLY, rule_options),
             new recurrence.Rule(recurrence.WEEKLY, rule_options),
-            new recurrence.Rule(recurrence.DAILY, rule_options)
+            new recurrence.Rule(recurrence.DAILY, rule_options),
+            new recurrence.Rule(recurrence.HOURLY, rule_options)
         ];
         this.freq_rules[this.rule.freq].update(this.rule);
 
@@ -746,7 +754,7 @@ recurrence.widget.RuleForm.prototype = {
             recurrence.display.labels.exclude_occurrences);
         var mode_container = recurrence.widget.e(
             'div', {'class': 'mode'},
-            [mode_checkbox, mode_label]);
+            (this.options.with_exrules !== false) ? [mode_checkbox, mode_label] : []);
         if (this.mode == recurrence.widget.EXCLUSION)
             // delay for ie6 compatibility
             setTimeout(function() {
@@ -756,7 +764,7 @@ recurrence.widget.RuleForm.prototype = {
 
         // freq
 
-        var freq_choices = recurrence.display.frequencies.slice(0, 4);
+        var freq_choices = recurrence.display.frequencies.slice(0, 5);
         var freq_options = recurrence.array.foreach(
             freq_choices, function(item, i) {
                 var option = recurrence.widget.e(
@@ -839,7 +847,8 @@ recurrence.widget.RuleForm.prototype = {
 
         var until_count_container = recurrence.widget.e(
             'ul', {'class': 'until-count'},
-            [until_container, count_container]);
+            (this.options.with_count !== false) ? [until_container, count_container] : [until_container]);
+
         var limit_checkbox = recurrence.widget.e(
             'input', {
                 'class': 'checkbox', 'type': 'checkbox',
@@ -953,7 +962,8 @@ recurrence.widget.RuleForm.prototype = {
             recurrence.widget.RuleYearlyForm,
             recurrence.widget.RuleMonthlyForm,
             recurrence.widget.RuleWeeklyForm,
-            recurrence.widget.RuleDailyForm
+            recurrence.widget.RuleDailyForm,
+            recurrence.widget.RuleHourlyForm,
         ];
         var freq_forms = recurrence.array.foreach(
             forms, function(form, i) {
@@ -1548,17 +1558,42 @@ recurrence.widget.RuleDailyForm.prototype = {
     }
 };
 
+recurrence.widget.RuleHourlyForm = function(panel, rule) {
+    this.init(panel, rule);
+};
+recurrence.widget.RuleHourlyForm.prototype = {
+    init: function(panel, rule) {
+        this.panel = panel;
+        this.rule = rule;
 
-recurrence.widget.DateForm = function(panel, mode, date) {
-    this.init(panel, mode, date);
+        this.init_dom();
+    },
+
+    init_dom: function() {
+        var root = recurrence.widget.e('div', {'class': 'hourly'});
+        root.style.display = 'none';
+        this.elements = {'root': root};
+    },
+
+    show: function() {
+        // this.elements.root.style.display = '';
+    },
+
+    hide: function() {
+        // this.elements.root.style.display = 'none';
+    }
+};
+
+recurrence.widget.DateForm = function(panel, mode, date, options) {
+    this.init(panel, mode, date, options);
 };
 recurrence.widget.DateForm.prototype = {
-    init: function(panel, mode, date) {
+    init: function(panel, mode, date, options) {
         this.collapsed = true;
         this.panel = panel;
         this.mode = mode;
         this.date = date;
-
+        this.options = options || {};
         this.init_dom();
     },
 
@@ -1583,7 +1618,7 @@ recurrence.widget.DateForm.prototype = {
             'span', {'class': 'recurrence-label'},
             recurrence.display.labels.exclude_date);
         var mode_container = recurrence.widget.e(
-            'div', {'class': 'mode'}, [mode_checkbox, mode_label]);
+            'div', {'class': 'mode'}, (this.options.with_exdates !== false) ? [mode_checkbox, mode_label] : []);
 
         // date
 
@@ -1597,7 +1632,7 @@ recurrence.widget.DateForm.prototype = {
         // core
 
         var root = recurrence.widget.e(
-            'form', {'class': 'date'}, [mode_container, date_container]);
+            'form', {'class': 'date'}, (this.options.with_exdates !== false) ? [mode_container, date_container] : [date_container]);
 
         // init dom
 
